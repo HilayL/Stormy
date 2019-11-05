@@ -7,6 +7,10 @@
         <variable
             name="weather"
             type="com.hilaylotan.stormy.CurrentWeather" />
+
+        <variable
+            name="city"
+            type="String" />
     </data>
     
 <androidx.constraintlayout.widget.ConstraintLayout
@@ -53,7 +57,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
-        android:text="@{weather.locationLabel}"
+        android:text="@{city}"
         android:textColor="@android:color/white"
         android:textSize="24sp"
         app:layout_constraintBottom_toTopOf="@+id/timeValue"

@@ -4,14 +4,12 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.FragmentActivity;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
@@ -22,6 +20,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.renderscript.ScriptGroup;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.View;
@@ -30,12 +29,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.Api;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
-import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
-import com.google.android.gms.common.api.PendingResult;
-import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -45,23 +39,21 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG=MainActivity.class.getSimpleName();
-    public String city;
 
     private CurrentWeather currentWeather;
 
     private ImageView iconImageView;
+
+    private TextView cityTextView;
 
     public static final int requestPermissionCode=1;
 
@@ -81,14 +73,15 @@ public class MainActivity extends AppCompatActivity {
         ).addApi(LocationServices.API).build();
         client.connect();
 
+
         if (ActivityCompat.checkSelfPermission(this,ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
             requestPermission();
         }
+            getParmeters();
+            latitude = getLatitude();
+            longitude = getLongitude();
 
-        latitude=getLatitude();
-        longitude =getLongitude();
-
-        getForcast(latitude,longitude);
+            getForcast(latitude, longitude);
         Log.d(TAG,"working");
     }
 
@@ -219,6 +212,7 @@ public class MainActivity extends AppCompatActivity {
     }
     public void refreshOnClick (View view)
     {
+        getParmeters();
         getForcast(getLatitude(),getLongitude());
     }
 
@@ -236,7 +230,11 @@ public class MainActivity extends AppCompatActivity {
                                 @Override
                                 public void onFinished(List<Address> results) {
                                     // do something with the result
-                                    city=results.toString();
+                                    Log.i(TAG,"$$$$$$$$$$$$"+results.toString());
+                                    Log.i(TAG,results.get(0).getLocality());
+                                    if (results!=null){
+                                        cityTextView=findViewById(R.id.locationValue);
+                                        cityTextView.setText(results.get(0).getLocality());}
                                 }
                             });
 
@@ -252,13 +250,11 @@ public class MainActivity extends AppCompatActivity {
 
     public double getLatitude()
     {
-        getParmeters();
         return arry[0];
     }
 
     public double getLongitude()
     {
-        getParmeters();
         return arry[1];
     }
 
