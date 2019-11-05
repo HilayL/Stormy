@@ -1,6 +1,7 @@
 package com.hilaylotan.stormy;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
@@ -10,12 +11,14 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
@@ -42,12 +45,13 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAG=MainActivity.class.getSimpleName();
+    public static final String TAG = MainActivity.class.getSimpleName();
 
     private CurrentWeather currentWeather;
 
@@ -55,49 +59,68 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView cityTextView;
 
-    public static final int requestPermissionCode=1;
+    public static final int requestPermissionCode = 1;
 
     private GoogleApiClient client;
     public FusedLocationProviderClient fusedLocationProviderClient;
 
-    private double[] arry=new double[2];
+    LocationManager locationManager;
+
+    private double[] arry = new double[2];
 
     double latitude;
     double longitude;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        client = new GoogleApiClient.Builder(this
-        ).addApi(LocationServices.API).build();
-        client.connect();
 
-
-        if (ActivityCompat.checkSelfPermission(this,ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermission();
         }
+
+        client = new GoogleApiClient.Builder(this
+        ).addApi(LocationServices.API).build();
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             getParmeters();
-            latitude = getLatitude();
-            longitude = getLongitude();
+        }
 
-            getForcast(latitude, longitude);
-        Log.d(TAG,"working");
+        latitude = getLatitude();
+        longitude = getLongitude();
+
+        getForcast(latitude, longitude);
+        Log.d(TAG, "working");
     }
 
-    private void requestPermission()
-    {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        client.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        if (client.isConnected())
+            client.disconnect();
+        super.onStop();
+    }
+
+
+    private void requestPermission() {
         ActivityCompat.requestPermissions
-                (MainActivity.this,new String[]{ACCESS_FINE_LOCATION},requestPermissionCode);
+                (MainActivity.this, new String[]{ACCESS_FINE_LOCATION}, requestPermissionCode);
     }
 
-    public void onConnctionFailed (@NonNull ConnectionResult connectionResult)
-    {
+    public void onConnctionFailed(@NonNull ConnectionResult connectionResult) {
         aletUserAboutError();
     }
 
-    private void getForcast(double latitude, double longitude)
-    {
+    private void getForcast(double latitude, double longitude) {
         final ActivityMainBinding binding = DataBindingUtil.setContentView(MainActivity.this, R.layout.activity_main);
 
         TextView darkSky = findViewById(R.id.darkSkyAttribution);
@@ -108,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
 
         iconImageView = findViewById(R.id.iconImageView);
 
-        String forcastURL = "https://api.darksky.net/forecast/"+apiKey+"/"+latitude+","+longitude;
+        String forcastURL = "https://api.darksky.net/forecast/" + apiKey + "/" + latitude + "," + longitude;
 
         if (isNetwotkAvailable()) {
 
@@ -126,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                     try {
-                        String jsonData=response.body().string();
+                        String jsonData = response.body().string();
                         Log.v(TAG, jsonData);
                         if (response.isSuccessful()) {
                             currentWeather = getCurrentDetails(jsonData);
@@ -157,17 +180,15 @@ public class MainActivity extends AppCompatActivity {
 
                     } catch (IOException e) {
                         Log.e(TAG, "IO exeption caught", e);
-                    }
-                    catch (JSONException e){
-                        Log.e(TAG,"Here comes JSON",e);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Here comes JSON", e);
                     }
                 }
             });
         }
     }
 
-    private CurrentWeather getCurrentDetails(String jsonData) throws JSONException
-    {
+    private CurrentWeather getCurrentDetails(String jsonData) throws JSONException {
         JSONObject forcast = new JSONObject(jsonData);
 
         String timezone = forcast.getString("timezone");
@@ -186,39 +207,69 @@ public class MainActivity extends AppCompatActivity {
         currentWeather.setTemperature(currently.getDouble("temperature"));
         currentWeather.setTimeZone(timezone);
 
-        Log.i(TAG,currentWeather.getFormattedTime());
+        Log.i(TAG, currentWeather.getFormattedTime());
 
         return currentWeather;
     }
 
-    private boolean isNetwotkAvailable()
-    {
+    private boolean isNetwotkAvailable() {
         ConnectivityManager manager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = manager.getActiveNetworkInfo();
 
-        boolean isAvailable=false;
+        boolean isAvailable = false;
 
-        if (networkInfo!=null && networkInfo.isConnected())
-            isAvailable=true;
+        if (networkInfo != null && networkInfo.isConnected())
+            isAvailable = true;
         else
-            Toast.makeText(this, R.string.network_unavailable_message,Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.network_unavailable_message, Toast.LENGTH_LONG).show();
         return isAvailable;
     }
 
-    private void aletUserAboutError()
-    {
-        AlertDialogFragment dialog=new AlertDialogFragment();
-        dialog.show(getFragmentManager(),"error_dialog");
-    }
-    public void refreshOnClick (View view)
-    {
-        getParmeters();
-        getForcast(getLatitude(),getLongitude());
+    private void aletUserAboutError() {
+        AlertDialogFragment dialog = new AlertDialogFragment();
+        dialog.show(getFragmentManager(), "error_dialog");
     }
 
-    private double[] getParmeters()
-    {
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+    public void refreshOnClick(View view) {
+        getParmeters();
+        getForcast(getLatitude(), getLongitude());
+    }
+
+    private double[] getParmeters() {
+
+        if (ActivityCompat.checkSelfPermission(MainActivity.this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(MainActivity.this,Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    Activity#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for Activity#requestPermissions for more details.
+            requestPermission();
+        }
+        else
+        {
+        Location locationGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        Location locationNetwork = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        Location locationPassive = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+
+        if (locationGps !=null)
+        {
+            arry[0]=locationGps.getLatitude();
+            arry[1]=locationGps.getLongitude();
+        }
+        else if (locationNetwork !=null)
+        {
+            arry[0]=locationNetwork.getLatitude();
+            arry[1]=locationNetwork.getLongitude();
+        }
+        else if (locationPassive !=null)
+        {
+            arry[0]=locationPassive.getLatitude();
+            arry[1]=locationPassive.getLongitude();
+        }
+        }
 
         fusedLocationProviderClient.getLastLocation()
                 .addOnSuccessListener(this, new OnSuccessListener<Location>() {
@@ -231,19 +282,15 @@ public class MainActivity extends AppCompatActivity {
                                 public void onFinished(List<Address> results) {
                                     // do something with the result
                                     Log.i(TAG,"$$$$$$$$$$$$"+results.toString());
-                                    Log.i(TAG,results.get(0).getLocality());
+                                    Log.i("jojo",results.get(0).getLocality());
                                     if (results!=null){
                                         cityTextView=findViewById(R.id.locationValue);
                                         cityTextView.setText(results.get(0).getLocality());}
                                 }
                             });
-
-                            arry[0]=location.getLatitude();
-                            arry[1]=location.getLongitude();
                         }
                     }
                 });
-
         Log.i(TAG,"Location parameters:"+String.valueOf(arry[0])+","+String.valueOf(arry[1]));
         return arry;
     }
