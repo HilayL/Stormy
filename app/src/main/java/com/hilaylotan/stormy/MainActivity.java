@@ -82,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
         client = new GoogleApiClient.Builder(this
         ).addApi(LocationServices.API).build();
 
+
+        //getting location tool set
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -188,6 +190,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //getting all the details in json and returning it in currentwheather form
     private CurrentWeather getCurrentDetails(String jsonData) throws JSONException {
         JSONObject forcast = new JSONObject(jsonData);
 
@@ -235,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
         getForcast(getLatitude(), getLongitude());
     }
 
+    //getting the latitude and longitude from the location manager and the client
     private double[] getParmeters() {
 
         if (ActivityCompat.checkSelfPermission(MainActivity.this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
@@ -306,6 +310,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    //getting the locality from Geocoder
     public void getCityName(final Location location, final OnGeocoderFinishedListener listener) {
         new AsyncTask<Void, Integer, List<Address>>() {
             @Override

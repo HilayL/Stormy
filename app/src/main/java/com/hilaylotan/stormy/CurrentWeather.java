@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+//Class type to store the json data from darksky
 public class CurrentWeather
 {
     private String locationLabel;
